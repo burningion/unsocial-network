@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDPANDA_BROKERS=redpanda:9092
+    depends_on:
+      - redpanda
+    restart: unless-stopped
+    command:
+      - uv
+      - run
+      - app.py
+  redpanda:
+    image: redpandadata/redpanda:latest
+    ports:
+      - "9092:9092"  # Kafka API
+      - "9644:9644"  # Admin API
+    environment:
+      - REDPANDA_RPC_SERVER_LISTEN_ADDR=0.0.0.0
+      - REDPANDA_KAFKA_ADDRESS=0.0.0.0
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=0.0.0.0:9092
+      - --advertise-kafka-addr=redpanda:9092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+
+  redpanda-console:
+    image: redpandadata/console:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - REDPANDA_BROKERS=redpanda:9092
+    depends_on:
+      - redpanda
+
+volumes:
+  redpanda_data:
