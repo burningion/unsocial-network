@@ -6,8 +6,10 @@ from typing import Dict, List, Optional, Union
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Redpanda client (using aiokafka as the client)
@@ -15,6 +17,7 @@ from aiokafka import AIOKafkaProducer
 import os
 import asyncio
 import json
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -148,6 +151,25 @@ async def send_event_to_redpanda(event: Dict):
         # In production, you'd want to log this and possibly retry
         print(f"Error sending event to Redpanda: {e}")
         # Consider adding to a dead-letter queue
+
+frontend_build_dir = os.path.join(os.path.dirname(__file__), "frontend/build")
+frontend_js_dir = os.path.join(frontend_build_dir, "static/js")
+frontend_css_dir = os.path.join(frontend_build_dir, "static/css")
+
+# Mount static directories
+app.mount("/static/js", StaticFiles(directory=frontend_js_dir), name="static_js")
+app.mount("/static/css", StaticFiles(directory=frontend_css_dir), name="static_css")
+
+# You may have other static assets like images, media, etc.
+# You can mount them similarly
+if os.path.exists(os.path.join(frontend_build_dir, "static/media")):
+    frontend_media_dir = os.path.join(frontend_build_dir, "static/media")
+    app.mount("/static/media", StaticFiles(directory=frontend_media_dir), name="static_media")
+
+# Serve the index.html for the root route
+@app.get("/", include_in_schema=False)
+async def serve_spa():
+    return FileResponse(os.path.join(frontend_build_dir, "index.html"))
 
 
 @app.post("/events/{event_type}", status_code=202)

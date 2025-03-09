@@ -11,6 +11,7 @@ RUN uv sync
 
 # Copy application code
 COPY app.py .
+COPY frontend/build frontend/build
 
 # Expose API port
 EXPOSE 8000
