@@ -6,21 +6,21 @@ import { v4 as uuidv4 } from 'uuid';
 const SAMPLE_VIDEOS = [
   {
     id: 'video1',
-    src: 'https://assets.mixkit.co/videos/preview/mixkit-woman-dancing-in-the-sunlight-34884-large.mp4',
-    title: 'Dancing in Sunlight',
-    author: '@sunlight_dancer',
+    src: 'https://api.video-jungle.com/v/ef241145-7d79-4e35-b3de-396f6694f1fd',
+    title: 'Nuclear Submarine',
+    author: 'usgov',
   },
   {
     id: 'video2',
-    src: 'https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4',
-    title: 'Ocean Waves',
-    author: '@ocean_lover',
+    src: 'https://api.video-jungle.com/v/924e1b79-d64d-4655-86c8-5a9c3a9781a2',
+    title: 'Spinning in the Daffodils',
+    author: 'queens of the stone age',
   },
   {
     id: 'video3',
-    src: 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4',
-    title: 'Spring Blossoms',
-    author: '@nature_watcher',
+    src: 'https://api.video-jungle.com/v/36b3b3e3-1e02-43e9-89bc-aebbb5325299',
+    title: 'Andys line at Tampa Pro',
+    author: 'and anderson',
   }
 ];
 
