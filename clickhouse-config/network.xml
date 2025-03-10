@@ -1,0 +1,7 @@
+<clickhouse>
+    <!-- Listen on all interfaces -->
+    <listen_host>0.0.0.0</listen_host>
+    
+    <!-- Uncomment if you want to disable authentication for easier testing -->
+    <http_server_default_response>Ok.</http_server_default_response>
+</clickhouse>

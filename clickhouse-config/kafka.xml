@@ -1,0 +1,10 @@
+<yandex>
+    <!-- Kafka Connection Settings -->
+    <kafka>
+        <debug>false</debug>
+        <!-- List of Kafka brokers -->
+        <brokers>
+            <broker>redpanda:9092</broker>
+        </brokers>
+    </kafka>
+</yandex>
