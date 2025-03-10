@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronUp, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import VideoFeed from './VideoFeed';
 
 // Sample video data - replace with your actual video sources
 const SAMPLE_VIDEOS = [
@@ -522,93 +523,7 @@ function App() {
   };
 
   return (
-    <div 
-      className="app-container" 
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="video-container">
-        {SAMPLE_VIDEOS.map((video, index) => {
-          const videoSource = videoSources[video.id];
-          const isLoading = loadingStates[video.id];
-          
-          return (
-            <div 
-              key={video.id} 
-              className={`video-wrapper ${index === currentVideoIndex ? 'active' : ''}`}
-              style={{ 
-                display: index === currentVideoIndex ? 'block' : 'none',
-              }}
-            >
-              {isLoading && <div className="video-loader">Loading...</div>}
-              
-              {videoSource && (
-                <>
-                  <video
-                    ref={el => videoRefs.current[index] = el}
-                    src={videoSource}
-                    className="video-player"
-                    loop={false}
-                    playsInline
-                    webkit-playsinline="true"
-                    muted
-                    preload="auto"
-                    onEnded={handleVideoEnd}
-                    onError={() => handleVideoError(index)}
-                  />
-                  
-                  {index === currentVideoIndex && renderPlaybackOverlay()}
-                </>
-              )}
-              
-              <div className="video-info">
-                <h3>{video.title}</h3>
-                <p>{video.author}</p>
-              </div>
-              
-              <div className="video-actions">
-                <button 
-                  className={`action-button ${isLiked[video.id] ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike(video.id);
-                  }}
-                >
-                  <Heart size={28} fill={isLiked[video.id] ? "#FF2D55" : "none"} color={isLiked[video.id] ? "#FF2D55" : "white"} />
-                  <span>Like</span>
-                </button>
-                
-                <button 
-                  className="action-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleComment(video.id);
-                  }}
-                >
-                  <MessageCircle size={28} />
-                  <span>Comment</span>
-                </button>
-                
-                <button 
-                  className="action-button"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Share2 size={28} />
-                  <span>Share</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      
-      <div className="navigation-hint">
-        <p>Swipe up for next video</p>
-        <ChevronUp size={24} />
-      </div>
-    </div>
+    <VideoFeed videos={SAMPLE_VIDEOS} />
   );
 }
 

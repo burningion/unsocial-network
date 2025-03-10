@@ -1,0 +1,303 @@
+/* Main app container */
+.app {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  overflow: hidden;
+  background-color: #000;
+}
+
+/* Loading container */
+.loadingContainer {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  background-color: #000;
+  font-size: 18px;
+}
+
+/* Video container with improved snap scrolling */
+.videoContainer {
+  height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* Better iOS scrolling */
+}
+
+/* Hide scrollbar for cleaner look */
+.videoContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.videoContainer {
+  -ms-overflow-style: none;  /* Internet Explorer and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Individual video wrapper with improved scroll snap */
+.videoWrapper {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  scroll-snap-align: start;
+  scroll-snap-stop: always; /* Force snap point stopping */
+  overflow: hidden;
+}
+
+/* Video element */
+.videoPlayer {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Playback overlay for tap-to-play functionality */
+.playbackOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.playIcon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.playIcon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Video information overlay */
+.videoInfo {
+  position: absolute;
+  bottom: 100px;
+  left: 10px;
+  color: white;
+  z-index: 3;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  max-width: 70%;
+}
+
+.videoInfo h3 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.videoInfo p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Video actions sidebar */
+.videoActions {
+  position: absolute;
+  right: 10px;
+  bottom: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  z-index: 3;
+}
+
+.actionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.actionButton span {
+  font-size: 12px;
+}
+
+.actionButton.active {
+  color: #FF2D55;
+}
+
+/* Upload section */
+.uploadSection {
+  height: 50px;
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.uploadButton {
+  padding: 8px 16px;
+  background-color: #FF2D55;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Sticky mini-player for desktop */
+.miniPlayer {
+  position: fixed;
+  right: 20px;
+  bottom: 70px;
+  width: 240px;
+  height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  background-color: #000;
+}
+
+.miniPlayer.active {
+  transform: translateY(0);
+}
+
+.miniPlayer .videoPlayer {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miniPlayerControls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.miniPlayerControls button {
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Navigation indicator */
+.scrollIndicator {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  text-align: center;
+  opacity: 0.8;
+  z-index: 3;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; transform: translateX(-50%) translateY(0); }
+  50% { opacity: 0.9; transform: translateX(-50%) translateY(-6px); }
+  100% { opacity: 0.5; transform: translateX(-50%) translateY(0); }
+}
+
+/* Media queries for desktop view */
+@media screen and (min-width: 1024px) {
+  /* Desktop mode - vertical feed in center with miniature player */
+  .app {
+    max-width: 414px; /* iPhone XR width for vertical feed */
+    margin: 0 auto;
+    border-left: 1px solid #333;
+    border-right: 1px solid #333;
+  }
+  
+  .uploadSection {
+    max-width: 414px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  /* Show sticky mini player when scrolled past */
+  .scrolledPast .videoWrapper {
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  /* When in sticky mode on desktop, make video sticky in corner */
+  .isStickyDesktop .miniPlayer {
+    right: 20px;
+    bottom: 70px;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile fullscreen handling - iOS friendly */
+@media screen and (max-width: 1023px) {
+  /* On mobile when in landscape, fix height for iOS */
+  @media (orientation: landscape) {
+    .videoContainer, .videoWrapper {
+      height: 100dvh; /* dynamic viewport height - modern browsers */
+    }
+    
+    .videoInfo {
+      bottom: 50px;
+    }
+    
+    .videoActions {
+      bottom: 50px;
+    }
+    
+    .scrollIndicator {
+      bottom: 20px;
+    }
+  }
+  
+  /* iOS Safari specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    .videoContainer, .videoWrapper {
+      height: -webkit-fill-available;
+    }
+  }
+  
+  /* Sticky mini player for mobile */
+  .isStickyMobile .miniPlayer {
+    width: 150px;
+    height: 250px;
+    right: 10px;
+    bottom: 60px;
+  }
+}
