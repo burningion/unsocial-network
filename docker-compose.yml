@@ -63,6 +63,8 @@ services:
     depends_on:
       - redpanda
     restart: unless-stopped
+    environment:
+      - CLICKHOUSE_SKIP_USER_SETUP=1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 5s

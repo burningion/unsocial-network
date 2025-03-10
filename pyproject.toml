@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aiokafka>=0.12.0",
+    "clickhouse-driver>=0.2.9",
     "fastapi>=0.115.11",
+    "pandas>=2.2.3",
     "pydantic>=2.10.6",
     "uvicorn>=0.34.0",
 ]
