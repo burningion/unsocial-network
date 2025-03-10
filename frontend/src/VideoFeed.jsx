@@ -2,6 +2,27 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Heart, MessageCircle, Share2, X, Maximize, ChevronUp } from 'lucide-react';
 import './VideoFeed.css';
 
+// Event tracking utility
+const sendEvent = async (eventType, eventData) => {
+  try {
+    const response = await fetch(`http://localhost:8000/events/${eventType}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventData),
+    });
+    
+    if (!response.ok) {
+      console.error(`Error sending ${eventType} event:`, await response.text());
+    }
+    return response.ok;
+  } catch (error) {
+    console.error(`Failed to send ${eventType} event:`, error);
+    return false;
+  }
+};
+
 const VideoFeed = ({ videos = [], isLoading = false }) => {
   // Use sample videos if none provided
   const videoData = useMemo(() => {
@@ -131,17 +152,40 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
       if (!videoRef) return;
       
       const videoId = videoData[i]?.id;
-      if (!videoId) return;
+      const video = videoData[i];
+      if (!videoId || !video) return;
       
       if (i === currentVideoIndex) {
         if (isPlaying[videoId]) {
-          videoRef.play().catch(err => {
-            console.error("Video play error:", err);
-            videoRef.muted = true;
-            videoRef.play().catch(e => console.error("Second play attempt failed:", e));
-          });
+          videoRef.play()
+            .then(() => {
+              // Send video_watch event when a new video starts playing
+              sendEvent('video_watch', {
+                user_id: localStorage.getItem('userId') || 'anonymous',
+                video_id: video.videoId,
+                watch_duration_ms: 0, // Just started watching
+                video_duration_ms: Math.floor((videoRef.duration || 0) * 1000),
+                is_autoplay: true // This is triggered by auto-playback
+              });
+            })
+            .catch(err => {
+              console.error("Video play error:", err);
+              videoRef.muted = true;
+              videoRef.play().catch(e => console.error("Second play attempt failed:", e));
+            });
         }
       } else {
+        // If we're pausing a video that was playing, send a watch event with current duration
+        if (isPlaying[videoId] && !videoRef.paused) {
+          sendEvent('video_watch', {
+            user_id: localStorage.getItem('userId') || 'anonymous',
+            video_id: video.videoId,
+            watch_duration_ms: Math.floor(videoRef.currentTime * 1000),
+            video_duration_ms: Math.floor((videoRef.duration || 0) * 1000),
+            is_autoplay: false
+          });
+        }
+        
         // Ensure that all other videos are definitely paused
         videoRef.pause();
         
@@ -237,6 +281,19 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
   // Navigation functions
   const goToNextVideo = useCallback(() => {
     if (currentVideoIndex < videoData.length - 1) {
+      // Before moving to next video, send a skip event for the current video
+      const currentVideo = videoData[currentVideoIndex];
+      const videoElement = videoRefs.current[currentVideoIndex];
+      
+      if (currentVideo && videoElement) {
+        sendEvent('video_skip', {
+          user_id: localStorage.getItem('userId') || 'anonymous',
+          video_id: currentVideo.videoId,
+          skip_time_ms: Math.floor(videoElement.currentTime * 1000),
+          skip_type: 'swipe'
+        });
+      }
+      
       setCurrentVideoIndex(prevIndex => prevIndex + 1);
       
       // Scroll to the next video
@@ -248,10 +305,23 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
         });
       }
     }
-  }, [currentVideoIndex, videoData.length]);
+  }, [currentVideoIndex, videoData]);
   
   const goToPreviousVideo = useCallback(() => {
     if (currentVideoIndex > 0) {
+      // Before moving to previous video, send a skip event for the current video
+      const currentVideo = videoData[currentVideoIndex];
+      const videoElement = videoRefs.current[currentVideoIndex];
+      
+      if (currentVideo && videoElement) {
+        sendEvent('video_skip', {
+          user_id: localStorage.getItem('userId') || 'anonymous',
+          video_id: currentVideo.videoId,
+          skip_time_ms: Math.floor(videoElement.currentTime * 1000),
+          skip_type: 'swipe-back'
+        });
+      }
+      
       setCurrentVideoIndex(prevIndex => prevIndex - 1);
       
       // Scroll to the previous video
@@ -263,17 +333,32 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
         });
       }
     }
-  }, [currentVideoIndex]);
+  }, [currentVideoIndex, videoData]);
   
   // Handle when video ends
   const handleVideoEnd = useCallback(() => {
+    const video = videoData[currentVideoIndex];
+    const videoElement = videoRefs.current[currentVideoIndex];
+    
+    if (video && videoElement) {
+      // Send video_watch event with complete viewing
+      sendEvent('video_watch', {
+        user_id: localStorage.getItem('userId') || 'anonymous',
+        video_id: video.videoId,
+        watch_duration_ms: Math.floor(videoElement.duration * 1000),
+        video_duration_ms: Math.floor(videoElement.duration * 1000),
+        is_autoplay: false
+      });
+    }
+    
     // Automatically play the next video
     goToNextVideo();
-  }, [goToNextVideo]);
+  }, [goToNextVideo, videoData, currentVideoIndex]);
   
   // Toggle play/pause for a specific video
   const togglePlay = (videoId, index) => {
     const videoElement = videoRefs.current[index];
+    const video = videoData[index];
     
     setIsPlaying(prev => {
       const newState = {
@@ -283,9 +368,32 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
       
       if (videoElement) {
         if (newState[videoId]) {
-          videoElement.play().catch(err => console.error("Play error:", err));
+          videoElement.play()
+            .then(() => {
+              // Send video_watch event when playing starts
+              if (video) {
+                sendEvent('video_watch', {
+                  user_id: localStorage.getItem('userId') || 'anonymous',
+                  video_id: video.videoId,
+                  watch_duration_ms: 0, // Just started
+                  video_duration_ms: Math.floor((videoElement.duration || 0) * 1000),
+                  is_autoplay: false
+                });
+              }
+            })
+            .catch(err => console.error("Play error:", err));
         } else {
           videoElement.pause();
+          
+          // Send video_skip event when pausing
+          if (video) {
+            sendEvent('video_skip', {
+              user_id: localStorage.getItem('userId') || 'anonymous',
+              video_id: video.videoId,
+              skip_time_ms: Math.floor(videoElement.currentTime * 1000),
+              skip_type: 'manual'
+            });
+          }
         }
       }
       
@@ -295,21 +403,68 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
   
   // Toggle like for a video
   const toggleLike = (videoId) => {
-    setLikes(prev => ({
-      ...prev,
-      [videoId]: !prev[videoId]
-    }));
+    const index = videoData.findIndex(v => v.id === videoId);
+    const video = index !== -1 ? videoData[index] : null;
+    
+    setLikes(prev => {
+      const newLikeState = !prev[videoId];
+      
+      // Send like event to backend
+      if (video) {
+        sendEvent('video_like', {
+          user_id: localStorage.getItem('userId') || 'anonymous',
+          video_id: video.videoId,
+          is_liked: newLikeState
+        });
+      }
+      
+      return {
+        ...prev,
+        [videoId]: newLikeState
+      };
+    });
   };
   
   // Handle comment and share actions
   const handleComment = (videoId) => {
     console.log(`Comment on video ${videoId}`);
-    // Implement comment functionality
+    
+    const index = videoData.findIndex(v => v.id === videoId);
+    const video = index !== -1 ? videoData[index] : null;
+    
+    if (video) {
+      // Generate a unique comment ID
+      const commentId = `comment-${Date.now()}`;
+      
+      // Send comment event
+      sendEvent('video_comment', {
+        user_id: localStorage.getItem('userId') || 'anonymous',
+        video_id: video.videoId,
+        comment_id: commentId,
+        comment_text: "User commented" // In a real app, this would be the actual comment text
+      });
+    }
   };
   
   const handleShare = (videoId) => {
     console.log(`Share video ${videoId}`);
-    // Implement share functionality
+    
+    // For shares, we're using the video_watch event type with a special flag
+    // An alternative would be to add a VIDEO_SHARE event type in the backend
+    const index = videoData.findIndex(v => v.id === videoId);
+    const video = index !== -1 ? videoData[index] : null;
+    
+    if (video) {
+      // Send share event (using watch event with custom data)
+      sendEvent('video_watch', {
+        user_id: localStorage.getItem('userId') || 'anonymous',
+        video_id: video.videoId,
+        watch_duration_ms: 0,
+        video_duration_ms: 0,
+        is_autoplay: false,
+        is_share: true // Custom field to indicate this is a share event
+      });
+    }
   };
   
   // Close the mini player
