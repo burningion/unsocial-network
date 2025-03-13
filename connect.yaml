@@ -13,15 +13,6 @@ input:
 pipeline:
   processors:
     - mapping: |
-        # Print the raw message for debugging
-        root = content()
-        meta debug = content().string() 
-    
-    - log:
-        level: INFO
-        message: "Processing message: ${! meta(\"debug\") }"
-        
-    - mapping: |
         # Parse JSON content if it's not already parsed
         let data = if content().type() == "string" { content().parse_json() } else { content() }
         
@@ -29,7 +20,13 @@ pipeline:
         root = data
         root.click_timestamp = this.timestamp.number().format_timestamp("2006-01-02 15:04:05")
         
-        # Ensure boolean fields are properly defaulted
+        # Convert nulls to appropriate defaults
+        if this.session_id == null { root.session_id = "" }
+        if this.device_info == null { root.device_info = "{}" }
+        if this.geo_location == null { root.geo_location = "{}" }
+        if this.playback_quality == null { root.playback_quality = "" }
+        
+        # Ensure boolean fields are explicitly false if null
         if this.is_autoplay == null { root.is_autoplay = false }
         if this.is_fullscreen == null { root.is_fullscreen = false }
         if this.is_liked == null { root.is_liked = false }
@@ -50,64 +47,20 @@ pipeline:
 output:
   sql:
     driver: clickhouse
-    data_source_name: "tcp://clickhouse:9000?database=default&username=default"
-    query: "INSERT INTO ${! meta(\"event_table\") } VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"
+    data_source_name: "clickhouse://clickhouse:9000?database=default&username=default"
+    query: "INSERT INTO ${! meta(\"event_table\") } (event_id, user_id, video_id, timestamp, click_timestamp, event_type, session_id, device_info, geo_location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
     args_mapping: |
-      let event_type = this.event_type
-      
-      # Define common fields with safe defaults
-      let common_fields = [
-        this.event_id || "",
-        this.user_id || "",
-        this.video_id || "",
-        this.timestamp || 0,
-        this.click_timestamp || "",
-        this.event_type || "",
-        this.session_id || ""
+      root = [
+        this.event_id,
+        this.user_id,
+        this.video_id,
+        this.timestamp,
+        this.click_timestamp,
+        this.event_type,
+        this.session_id,
+        this.device_info,
+        this.geo_location
       ]
-      
-      root = if event_type == "video_watch" {
-        common_fields + [
-          this.watch_duration_ms || 0,
-          this.video_duration_ms || 0,
-          this.watch_percentage || 0.0,
-          this.playback_quality || "",
-          this.is_autoplay || false,
-          this.is_fullscreen || false,
-          this.device_info || "{}",
-          this.geo_location || "{}"
-        ]
-      } else if event_type == "video_like" {
-        common_fields + [
-          this.is_liked || false,
-          "", "", "", "", "", "",
-          this.device_info || "{}",
-          this.geo_location || "{}"
-        ]
-      } else if event_type == "video_comment" {
-        common_fields + [
-          this.comment_id || "",
-          this.comment_text || "",
-          this.parent_comment_id || "",
-          "", "", "", "",
-          this.device_info || "{}",
-          this.geo_location || "{}"
-        ]
-      } else if event_type == "video_skip" {
-        common_fields + [
-          this.skip_time_ms || 0,
-          this.skip_type || "manual",
-          "", "", "", "", "",
-          this.device_info || "{}",
-          this.geo_location || "{}"
-        ]
-      } else {
-        common_fields + [
-          "", "", "", "", "", "", "",
-          this.device_info || "{}",
-          this.geo_location || "{}"
-        ]
-      }
     max_in_flight: 64
     batching:
       count: 100
