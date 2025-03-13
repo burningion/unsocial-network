@@ -16,20 +16,44 @@ pipeline:
         # Parse JSON content if it's not already parsed
         let data = if content().type() == "string" { content().parse_json() } else { content() }
         
-        # Add timestamp in ClickHouse format
+        # Keep original numeric timestamp for ClickHouse
         root = data
-        root.click_timestamp = this.timestamp.number().format_timestamp("2006-01-02 15:04:05")
+        # Ensure timestamp is a number
+        if root.timestamp == null {
+          root.timestamp = this.timestamp.number()
+        }
         
-        # Convert nulls to appropriate defaults
-        if this.session_id == null { root.session_id = "" }
-        if this.device_info == null { root.device_info = "{}" }
-        if this.geo_location == null { root.geo_location = "{}" }
-        if this.playback_quality == null { root.playback_quality = "" }
+        # Convert nulls to appropriate defaults - using if-then pattern
+        if this.session_id == null { 
+          root.session_id = "" 
+        }
+        if this.device_info == null { 
+          root.device_info = "{}" 
+        }
+        if this.geo_location == null { 
+          root.geo_location = "{}" 
+        }
+        if this.playback_quality == null { 
+          root.playback_quality = "" 
+        }
         
         # Ensure boolean fields are explicitly false if null
-        if this.is_autoplay == null { root.is_autoplay = false }
-        if this.is_fullscreen == null { root.is_fullscreen = false }
-        if this.is_liked == null { root.is_liked = false }
+        if this.is_autoplay == null { 
+          root.is_autoplay = false 
+        }
+        if this.is_fullscreen == null { 
+          root.is_fullscreen = false 
+        }
+        if this.is_liked == null { 
+          root.is_liked = false 
+        }
+        
+        # Also check for event-specific fields and set defaults as needed
+        if root.event_type == "video_watch" {
+          if root.is_fullscreen == null {
+            root.is_fullscreen = false
+          }
+        }
         
         # Determine which table to write to based on event_type
         meta event_table = if this.event_type == "video_watch" {
@@ -43,25 +67,114 @@ pipeline:
         } else {
           "unknown_events"
         }
+        
+        meta event_type = this.event_type
 
+# Video Watch events
 output:
-  sql:
-    driver: clickhouse
-    data_source_name: "clickhouse://clickhouse:9000?database=default&username=default"
-    query: "INSERT INTO ${! meta(\"event_table\") } (event_id, user_id, video_id, timestamp, click_timestamp, event_type, session_id, device_info, geo_location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-    args_mapping: |
-      root = [
-        this.event_id,
-        this.user_id,
-        this.video_id,
-        this.timestamp,
-        this.click_timestamp,
-        this.event_type,
-        this.session_id,
-        this.device_info,
-        this.geo_location
-      ]
-    max_in_flight: 64
-    batching:
-      count: 100
-      period: 1s
+  switch:
+    cases:
+      - check: meta("event_type") == "video_watch"
+        output:
+          sql_insert:
+            driver: clickhouse
+            dsn: "clickhouse://clickhouse:9000/unsocial"
+            table: video_watch_events
+            columns: [event_id, user_id, video_id, timestamp, session_id, watch_duration_ms, video_duration_ms, watch_percentage, playback_quality, is_autoplay, is_fullscreen, device_info, geo_location]
+            args_mapping: |
+              root = [
+                this.event_id,
+                this.user_id,
+                this.video_id,
+                this.timestamp,
+                this.session_id,
+                this.watch_duration_ms,
+                this.video_duration_ms,
+                this.watch_percentage,
+                this.playback_quality,
+                this.is_autoplay,
+                this.is_fullscreen,
+                this.device_info,
+                this.geo_location
+              ]
+            max_in_flight: 64
+            batching:
+              count: 100
+              period: 1s
+
+      - check: meta("event_type") == "video_like"
+        output:
+          sql_insert:
+            driver: clickhouse
+            dsn: "clickhouse://clickhouse:9000/unsocial"
+            table: video_like_events
+            columns: [event_id, user_id, video_id, timestamp, session_id, is_liked, device_info, geo_location] 
+            args_mapping: |
+              root = [
+                this.event_id,
+                this.user_id,
+                this.video_id,
+                this.timestamp,
+                this.session_id,
+                this.is_liked,
+                this.device_info,
+                this.geo_location
+              ]
+            max_in_flight: 64
+            batching:
+              count: 100
+              period: 1s
+
+      - check: meta("event_type") == "video_comment"
+        output:
+          sql_insert:
+            driver: clickhouse
+            dsn: "clickhouse://clickhouse:9000/unsocial"
+            table: video_comment_events
+            columns: [event_id, user_id, video_id, timestamp, session_id, comment_id, comment_text, parent_comment_id, device_info, geo_location]
+            args_mapping: |
+              root = [
+                this.event_id,
+                this.user_id,
+                this.video_id,
+                this.timestamp,
+                this.session_id,
+                this.comment_id,
+                this.comment_text,
+                this.parent_comment_id,
+                this.device_info,
+                this.geo_location
+              ]
+            max_in_flight: 64
+            batching:
+              count: 100
+              period: 1s
+
+      - check: meta("event_type") == "video_skip"
+        output:
+          sql_insert:
+            driver: clickhouse
+            dsn: "clickhouse://clickhouse:9000/unsocial"
+            table: video_skip_events
+            columns: [event_id, user_id, video_id, timestamp, session_id, skip_time_ms, skip_type, device_info, geo_location]
+            args_mapping: |
+              root = [
+                this.event_id,
+                this.user_id,
+                this.video_id,
+                this.timestamp,
+                this.session_id,
+                this.skip_time_ms,
+                this.skip_type,
+                this.device_info,
+                this.geo_location
+              ]
+            max_in_flight: 64
+            batching:
+              count: 100
+              period: 1s
+    
+      # Add a catch-all case for unknown event types
+      - check: true
+        output:
+          drop: {}
