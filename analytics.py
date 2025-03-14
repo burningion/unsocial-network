@@ -76,9 +76,16 @@ def main():
     queries = {
         "event_counts": {
             "query": """
-                SELECT event_type, count() AS count
-                FROM unsocial.kafka_user_interactions
-                GROUP BY event_type
+                WITH all_events AS (
+                    SELECT 'video_watch' as event_type, count() AS count FROM unsocial.video_watch_events
+                    UNION ALL
+                    SELECT 'video_like' as event_type, count() AS count FROM unsocial.video_like_events
+                    UNION ALL
+                    SELECT 'video_comment' as event_type, count() AS count FROM unsocial.video_comment_events
+                    UNION ALL
+                    SELECT 'video_skip' as event_type, count() AS count FROM unsocial.video_skip_events
+                )
+                SELECT event_type, count FROM all_events
                 ORDER BY count DESC
             """,
             "description": "Count of events by type"
