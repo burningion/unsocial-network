@@ -85,7 +85,7 @@ class VideoWatchEvent(BaseEvent):
     event_type: EventType = EventType.VIDEO_WATCH
     watch_duration_ms: int
     video_duration_ms: int
-    watch_percentage: float = None
+    watch_percentage: float
     playback_quality: Optional[str] = None
     is_autoplay: bool = False
     is_fullscreen: bool = False
