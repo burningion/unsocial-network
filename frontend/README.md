@@ -2,6 +2,26 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Configuration
+
+### Screen Recording Feature
+
+The app includes an optional screen recording feature using rrweb. To enable it:
+
+1. Create a `.env` file in the frontend directory
+2. Add the following line:
+   ```
+   REACT_APP_ENABLE_RECORDING=true
+   ```
+
+When disabled (default), the recording functionality and related dependencies won't be loaded.
+
+Recording keyboard shortcuts (when enabled):
+- `Option+R` (or `Alt+R` on Windows/Linux) - Start/Stop recording
+- `Option+S` (or `Alt+S`) - Stop and download recording
+- `Option+C` (or `Alt+C`) - Clear recording
+- `Option+V` (or `Alt+V`) - Toggle recording UI visibility
+
 ## Available Scripts
 
 In the project directory, you can run:

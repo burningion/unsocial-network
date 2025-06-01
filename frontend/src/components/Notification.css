@@ -1,0 +1,42 @@
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  transform: translateX(-100%);
+  background-color: #333;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10001;
+  animation: slideIn 0.3s ease-out forwards, slideOut 0.3s ease-out 2.7s forwards;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideIn {
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.notification-success {
+  background-color: #4caf50;
+}
+
+.notification-error {
+  background-color: #f44336;
+}
+
+.notification-warning {
+  background-color: #ff9800;
+}
+
+.notification-info {
+  background-color: #2196f3;
+}

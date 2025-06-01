@@ -2,6 +2,28 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Heart, MessageCircle, Share2, X, Maximize, ChevronUp } from 'lucide-react';
 import './VideoFeed.css';
 
+// Conditionally import recording-related modules
+const recordingEnabled = process.env.REACT_APP_ENABLE_RECORDING === 'true';
+const useDomRecording = recordingEnabled 
+  ? require('./hooks/useDomRecording').useDomRecording 
+  : () => ({
+      isRecording: false,
+      events: [],
+      startRecording: () => {},
+      stopRecording: () => {},
+      downloadRecording: () => {},
+      clearRecording: () => {},
+      hasRecording: false
+    });
+
+const RecordingStatus = recordingEnabled 
+  ? require('./components/RecordingStatus').default 
+  : () => null;
+
+const ShortcutsHelper = recordingEnabled
+  ? require('./components/ShortcutsHelper').default
+  : () => null;
+
 // Event tracking utility
 const sendEvent = async (eventType, eventData) => {
   try {
@@ -71,6 +93,7 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
   const [isScrolling, setIsScrolling] = useState(false);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const [isStickyMode, setIsStickyMode] = useState(false);
+  const [showRecordingUI, setShowRecordingUI] = useState(false); // Hidden by default
   
   // Refs
   const videoRefs = useRef([]);
@@ -79,6 +102,17 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
   const observerRef = useRef(null);
   const touchStartY = useRef(null);
   const scrollTimeoutRef = useRef(null);
+  
+  // DOM Recording hook
+  const {
+    isRecording,
+    events,
+    startRecording,
+    stopRecording,
+    downloadRecording,
+    clearRecording,
+    hasRecording
+  } = useDomRecording();
   
   // Initialize video refs and set default playing state
   useEffect(() => {
@@ -493,6 +527,88 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
     const userAgent = typeof window !== 'undefined' ? window.navigator.userAgent : '';
     return /iPhone|iPad|iPod/i.test(userAgent);
   }, []);
+  
+  // Debug logging for recording status
+  useEffect(() => {
+    console.log('Recording enabled:', recordingEnabled);
+    console.log('REACT_APP_ENABLE_RECORDING:', process.env.REACT_APP_ENABLE_RECORDING);
+  }, [recordingEnabled]);
+
+  // Keyboard shortcuts for recording
+  useEffect(() => {
+    console.log('Setting up keyboard shortcuts. Recording enabled:', recordingEnabled);
+    
+    if (!recordingEnabled) {
+      console.log('Recording disabled - keyboard shortcuts not activated');
+      return;
+    }
+    
+    const handleKeyPress = (e) => {
+      // Log all keypress events to debug
+      console.log('Key pressed:', {
+        key: e.key,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        code: e.code
+      });
+      
+      // Use Alt/Option key to avoid conflicts
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        console.log('Alt key combo detected, code:', e.code);
+        
+        // Use e.code instead of e.key to avoid special character issues on macOS
+        switch(e.code) {
+          case 'KeyR':
+            e.preventDefault();
+            console.log('Alt+R pressed. isRecording:', isRecording);
+            if (isRecording) {
+              stopRecording();
+            } else {
+              startRecording();
+            }
+            break;
+          case 'KeyS':
+            e.preventDefault();
+            console.log('Alt+S pressed. isRecording:', isRecording, 'hasRecording:', hasRecording);
+            if (isRecording) {
+              stopRecording();
+              // Use setTimeout to ensure state has updated before downloading
+              setTimeout(() => {
+                downloadRecording();
+              }, 100);
+            } else if (hasRecording) {
+              downloadRecording();
+            }
+            break;
+          case 'KeyC':
+            e.preventDefault();
+            console.log('Alt+C pressed. hasRecording:', hasRecording, 'isRecording:', isRecording);
+            if (hasRecording && !isRecording) {
+              clearRecording();
+            }
+            break;
+          case 'KeyV':
+            e.preventDefault();
+            console.log('Alt+V pressed. Current showRecordingUI:', showRecordingUI);
+            setShowRecordingUI(prev => !prev);
+            break;
+          default:
+            console.log('Unhandled Alt+ code:', e.code, 'key:', e.key);
+            break;
+        }
+      }
+    };
+    
+    console.log('Adding keydown event listener');
+    window.addEventListener('keydown', handleKeyPress);
+    
+    return () => {
+      console.log('Removing keydown event listener');
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isRecording, hasRecording, startRecording, stopRecording, downloadRecording, clearRecording, recordingEnabled, showRecordingUI]);
 
   return (
     <div className="app">
@@ -603,6 +719,20 @@ const VideoFeed = ({ videos = [], isLoading = false }) => {
               Upload new video
             </button>
           </div>
+          
+          {/* Recording status - hidden by default, toggle with Cmd+V */}
+          <RecordingStatus 
+            isRecording={isRecording}
+            hasRecording={hasRecording}
+            onStartRecording={startRecording}
+            onStopRecording={stopRecording}
+            onDownload={downloadRecording}
+            onClear={clearRecording}
+            hideControls={!showRecordingUI}
+          />
+          
+          {/* Keyboard shortcuts helper */}
+          <ShortcutsHelper />
         </>
       )}
     </div>
